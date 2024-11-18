@@ -1,0 +1,37 @@
+---
+services:
+  app:
+    container_name: auction
+    hostname: auction
+    build:
+      dockerfile: Dockerfile
+      context: .
+    ports: [8080:8080]
+    env_file: [cmd/auction/.env]
+    volumes: [./cmd/auction/.env:/app/.env]
+    depends_on: [mongodb]
+    networks: [localNetwork]
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports: [27017:27017]
+    volumes: [mongo-data:/data/db]
+    networks: [localNetwork]
+  integration-tests:
+    build:
+      dockerfile: Dockerfile
+      context: .
+      target: builder
+    container_name: integration-tests
+    working_dir: /app
+    volumes: [.:/app]
+    env_file: [./cmd/auction/.env]
+    command: sh -c "cd /app && go test ./tests/integration/tests/... -v"
+    depends_on: [app, mongodb]
+    networks: [localNetwork]
+volumes:
+  mongo-data:
+    driver: local
+networks:
+  localNetwork:
+    driver: bridge
