@@ -9,7 +9,9 @@ services:
     ports: [8080:8080]
     env_file: [cmd/auction/.env]
     volumes: [./cmd/auction/.env:/app/.env]
-    depends_on: [mongodb]
+    depends_on:
+      mongodb:
+        condition: service_healthy
     networks: [localNetwork]
   mongodb:
     image: mongo:latest
@@ -17,6 +19,14 @@ services:
     ports: [27017:27017]
     volumes: [mongo-data:/data/db]
     networks: [localNetwork]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    healthcheck:
+      test: [CMD, mongosh, --eval, db.adminCommand('ping')]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   integration-tests:
     build:
       dockerfile: Dockerfile
@@ -27,7 +37,11 @@ services:
     volumes: [.:/app]
     env_file: [./cmd/auction/.env]
     command: sh -c "cd /app && go test ./tests/integration/tests/... -v"
-    depends_on: [app, mongodb]
+    depends_on:
+      app:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
     networks: [localNetwork]
 volumes:
   mongo-data:
